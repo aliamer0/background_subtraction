@@ -78,7 +78,7 @@ int main() {
     average_image(avg_bg5, bg5, rows, cols, channels);
 
     for(int i = 0; i < 5; i++) {
-        string filepath = "Output/bg_omp" + to_string(i+1) + ".jpg";
+        string filepath = "Output/bg_seq" + to_string(i+1) + ".jpg";
         imwrite(filepath, avg_bgs[i]);
     }
 
@@ -102,7 +102,7 @@ int main() {
     foreground_mask(foreground5, fg5, avg_bg5, rows, cols, channels);
 
     for(int i = 0; i < 5; i++) {
-        string filepath = "Output/fg_omp" + to_string(i+1) + ".jpg";
+        string filepath = "Output/fg_seq" + to_string(i+1) + ".jpg";
         imwrite(filepath, fgs[i]);
     }
 
@@ -111,30 +111,21 @@ int main() {
 
 void loadImages(const string& pathPrefix, int start, int end, vector<Mat>& frames) {
 
-    #pragma omp parallel
-    {
-        vector<Mat> threadFrames;
+    for(int i = start; i <= end; i++) {
+        string filename = pathPrefix + to_string(i) + ".jpg";
+        Mat img = imread(filename, IMREAD_UNCHANGED);
+        if(!img.empty()){
+            frames.push_back(img);
+        }
 
-        #pragma omp for nowait
-        for(int i = start; i <= end; i++) {
-            string filename = pathPrefix + to_string(i) + ".jpg";
-            Mat img = imread(filename, IMREAD_UNCHANGED);
-            if(!img.empty()){
-                threadFrames.push_back(img);
-            }
+    } // end of for directive
 
-        } // end of for directive
-        #pragma omp critical
-        frames.insert(frames.end(), threadFrames.begin(), threadFrames.end());
-    }
 
 }
 
 void average_image(Mat & avg_bg, vector<Mat> & bg, int rows, int cols, int channels) {
 
     int n = bg.size();
-
-    #pragma omp parallel for collapse(2)
     for(int y = 0; y < rows; y++) {
         for(int x = 0; x < cols; x++) {
             if ( channels ==  1) {
@@ -197,7 +188,6 @@ void foreground_mask(Mat & foreground, Mat & fg,  Mat & avg_bg, int rows, int co
 
 
 
-    #pragma omp parallel for collapse(2)
     for( int y = 0; y < rows; y++ ) {
         for( int x = 0; x < cols; x++ ) {
             if(channels == 1) {
