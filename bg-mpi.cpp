@@ -1,7 +1,7 @@
 #include "opencv2/core/matx.hpp"
 #include "opencv2/core/types.hpp"
 #include "opencv2/imgcodecs.hpp"
-#include <omp.h>
+#include "mpi.h"
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <string>
@@ -32,24 +32,29 @@ using namespace std;
 using namespace cv;
 
 
-void loadImages(const string& pathPrefix, int start, int end, vector<Mat>& frames);
-void average_image(Mat & avg_bg, vector<Mat> & bg, int rows, int cols, int channels);
+int loadImages(const string& pathPrefix, int start, int end, vector<Mat>& frames, int rank, int size);
+void average_image(Mat & avg_bg, vector<Mat> & bg, int rows, int cols, int channels, int size);
 void foreground_mask(Mat & foreground, Mat & fg,  Mat & avg_bg, int rows, int cols, int channels );
 
 int main() {
 
 
+    MPI_Init(NULL, NULL);
+    int rank, size;
 
-    // using openmp parallel for to load the images
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+
     vector<Mat> bg1, bg2, bg3, bg4, bg5;
 
-    loadImages(BG1, BG1_S, BG1_E, bg1);
-    loadImages(BG2, BG2_S, BG2_E, bg2);
-    loadImages(BG3, BG3_S, BG3_E, bg3);
-    loadImages(BG4, BG4_S, BG4_E, bg4);
-    loadImages(BG5, BG5_S, BG5_E, bg5);
+    int length1 = loadImages(BG1, BG1_S, BG1_E, bg1, rank, size);
+    int length2 = loadImages(BG2, BG2_S, BG2_E, bg2, rank, size);
+    int length3 = loadImages(BG3, BG3_S, BG3_E, bg3, rank, size);
+    int length4 = loadImages(BG4, BG4_S, BG4_E, bg4, rank, size);
+    int length5 = loadImages(BG5, BG5_S, BG5_E, bg5, rank, size);
 
-    cout << "Loaded images successfully." << endl;
+    cout << "Loaded images successfully. from rank " << rank << endl;
 
     int rows = bg1[0].rows;
     int cols = bg1[0].cols;
@@ -70,16 +75,35 @@ int main() {
     Mat avg_bg3(rows, cols, type, ch);
     Mat avg_bg4(rows, cols, type, ch);
     Mat avg_bg5(rows, cols, type, ch);
-    vector<Mat> avg_bgs = {avg_bg1, avg_bg2, avg_bg3, avg_bg4, avg_bg5};
-    average_image(avg_bg1, bg1, rows, cols, channels);
-    average_image(avg_bg2, bg2, rows, cols, channels);
-    average_image(avg_bg3, bg3, rows, cols, channels);
-    average_image(avg_bg4, bg4, rows, cols, channels);
-    average_image(avg_bg5, bg5, rows, cols, channels);
 
-    for(int i = 0; i < 5; i++) {
-        string filepath = "Output/bg_seq" + to_string(i+1) + ".jpg";
-        imwrite(filepath, avg_bgs[i]);
+
+
+    Mat avg_bg1_final(rows, cols, type, ch);
+    Mat avg_bg2_final(rows, cols, type, ch);
+    Mat avg_bg3_final(rows, cols, type, ch);
+    Mat avg_bg4_final(rows, cols, type, ch);
+    Mat avg_bg5_final(rows, cols, type, ch);
+    vector<Mat> avg_bgs = {avg_bg1_final, avg_bg2_final, avg_bg3_final, avg_bg4_final, avg_bg5_final};
+
+
+    average_image(avg_bg1, bg1, rows, cols, channels, size);
+    average_image(avg_bg2, bg2, rows, cols, channels, size);
+    average_image(avg_bg3, bg3, rows, cols, channels, size);
+    average_image(avg_bg4, bg4, rows, cols, channels, size);
+    average_image(avg_bg5, bg5, rows, cols, channels, size);
+
+    MPI_Reduce(avg_bg1.data, avg_bg1_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(avg_bg2.data, avg_bg2_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(avg_bg3.data, avg_bg3_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(avg_bg4.data, avg_bg4_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(avg_bg5.data, avg_bg5_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, 0, MPI_COMM_WORLD);
+
+
+    if(rank == 0) {
+        for(int i = 0; i < 5; i++) {
+            string filepath = "Output/bg_mpi" + to_string(i+1) + ".jpg";
+            imwrite(filepath, avg_bgs[i]);
+        }
     }
 
     Mat fg1(rows, cols, CV_8UC1, Scalar(0));
@@ -87,7 +111,14 @@ int main() {
     Mat fg3(rows, cols, CV_8UC1, Scalar(0));
     Mat fg4(rows, cols, CV_8UC1, Scalar(0));
     Mat fg5(rows, cols, CV_8UC1, Scalar(0));
-    vector<Mat> fgs = {fg1, fg2, fg3, fg4, fg5};
+
+    Mat fg1_final(rows, cols, CV_8UC1, Scalar(0));
+    Mat fg2_final(rows, cols, CV_8UC1, Scalar(0));
+    Mat fg3_final(rows, cols, CV_8UC1, Scalar(0));
+    Mat fg4_final(rows, cols, CV_8UC1, Scalar(0));
+    Mat fg5_final(rows, cols, CV_8UC1, Scalar(0));
+
+    vector<Mat> fgs = {fg1_final, fg2_final, fg3_final, fg4_final, fg5_final};
 
     Mat foreground1 = imread(FG1, IMREAD_UNCHANGED);
     Mat foreground2 = imread(FG2, IMREAD_UNCHANGED);
@@ -101,29 +132,50 @@ int main() {
     foreground_mask(foreground4, fg4, avg_bg4, rows, cols, channels);
     foreground_mask(foreground5, fg5, avg_bg5, rows, cols, channels);
 
-    for(int i = 0; i < 5; i++) {
-        string filepath = "Output/fg_seq" + to_string(i+1) + ".jpg";
-        imwrite(filepath, fgs[i]);
+    MPI_Reduce(fg1.data, fg1_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(fg2.data, fg2_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(fg3.data, fg3_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(fg4.data, fg4_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(fg5.data, fg5_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
+
+
+    if(rank == 0) {
+        for(int i = 0; i < 5; i++) {
+            string filepath = "Output/fg_mpi" + to_string(i+1) + ".jpg";
+            imwrite(filepath, fgs[i]);
+        }
     }
+
+
+
+    MPI_Finalize();
+    return 0;
 
 }
 
 
-void loadImages(const string& pathPrefix, int start, int end, vector<Mat>& frames) {
+int loadImages(const string& pathPrefix, int start, int end, vector<Mat>& frames, int rank, int size) {
 
-    for(int i = start; i <= end; i++) {
+    int totalFrames = end - start + 1;
+    int framesPerProcess = totalFrames / size;
+    int startIdx = start + rank * framesPerProcess;
+    int endIdx = (rank == size - 1) ? end : startIdx + framesPerProcess - 1;
+
+    double weight = static_cast<double>(endIdx - startIdx) / static_cast<double>(size);
+
+    for(int i = startIdx; i <= endIdx; i++) {
         string filename = pathPrefix + to_string(i) + ".jpg";
         Mat img = imread(filename, IMREAD_UNCHANGED);
         if(!img.empty()){
             frames.push_back(img);
         }
+    }
 
-    } // end of for directive
-
+    return frames.size();
 
 }
 
-void average_image(Mat & avg_bg, vector<Mat> & bg, int rows, int cols, int channels) {
+void average_image(Mat & avg_bg, vector<Mat> & bg, int rows, int cols, int channels, int size) {
 
     int n = bg.size();
     for(int y = 0; y < rows; y++) {
@@ -136,7 +188,7 @@ void average_image(Mat & avg_bg, vector<Mat> & bg, int rows, int cols, int chann
                     sumGray += pixel;
                 }
 
-                float avgGray = static_cast<float>(sumGray) / n;
+                float avgGray = static_cast<float>(sumGray) / (n * size);
                 avg_bg.at<uchar>(y, x) = static_cast<uchar>(round(avgGray));
 
             } else if (channels == 3) {
@@ -149,9 +201,9 @@ void average_image(Mat & avg_bg, vector<Mat> & bg, int rows, int cols, int chann
                     sumR += pixel[2];
                 }
 
-               float avgB = static_cast<float>(sumB) / n;
-               float avgG = static_cast<float>(sumG) / n;
-               float avgR = static_cast<float>(sumR) / n;
+               float avgB = static_cast<float>(sumB) / (n * size);
+               float avgG = static_cast<float>(sumG) / (n * size);
+               float avgR = static_cast<float>(sumR) / (n * size);
 
                avg_bg.at<Vec3b>(y, x)[0] = static_cast<uchar>(round(avgB));  // Round to nearest integer
                avg_bg.at<Vec3b>(y, x)[1] = static_cast<uchar>(round(avgG));
@@ -169,10 +221,10 @@ void average_image(Mat & avg_bg, vector<Mat> & bg, int rows, int cols, int chann
                 }
 
 
-                float avgB = static_cast<float>(sumB) / n;
-                float avgG = static_cast<float>(sumG) / n;
-                float avgR = static_cast<float>(sumR) / n;
-                float avgA = static_cast<float>(sumA) / n;
+                float avgB = static_cast<float>(sumB) / (n * size);
+                float avgG = static_cast<float>(sumG) / (n * size);
+                float avgR = static_cast<float>(sumR) / (n * size);
+                float avgA = static_cast<float>(sumA) / (n * size);
 
                 avg_bg.at<Vec4b>(y, x)[0] = static_cast<uchar>(round(avgB));
                 avg_bg.at<Vec4b>(y, x)[1] = static_cast<uchar>(round(avgG));
@@ -185,7 +237,6 @@ void average_image(Mat & avg_bg, vector<Mat> & bg, int rows, int cols, int chann
 }
 
 void foreground_mask(Mat & foreground, Mat & fg,  Mat & avg_bg, int rows, int cols, int channels ) {
-
 
 
     for( int y = 0; y < rows; y++ ) {
@@ -211,7 +262,7 @@ void foreground_mask(Mat & foreground, Mat & fg,  Mat & avg_bg, int rows, int co
                 int diff3 =  abs(foreground.at<Vec4b>(y, x)[2] - avg_bg.at<Vec4b>(y,x)[2]);
                 int diff4 =  abs(foreground.at<Vec4b>(y, x)[3] - avg_bg.at<Vec4b>(y,x)[3]);
 
-                int diff = diff1 + diff2 + diff3;
+                int diff = diff1 + diff2 + diff3 + diff4;
                 if ( diff > (THR * 4) ) {
                     fg.at<uchar>(y, x) = 250;
                 }

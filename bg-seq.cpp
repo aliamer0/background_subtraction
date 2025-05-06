@@ -1,7 +1,6 @@
 #include "opencv2/core/matx.hpp"
 #include "opencv2/core/types.hpp"
 #include "opencv2/imgcodecs.hpp"
-#include <omp.h>
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <string>
@@ -40,7 +39,7 @@ int main() {
 
 
 
-    // using openmp parallel for to load the images
+
     vector<Mat> bg1, bg2, bg3, bg4, bg5;
 
     loadImages(BG1, BG1_S, BG1_E, bg1);
@@ -70,8 +69,6 @@ int main() {
     Mat avg_bg3(rows, cols, type, ch);
     Mat avg_bg4(rows, cols, type, ch);
     Mat avg_bg5(rows, cols, type, ch);
-    Mat avg_bg(rows, cols, type, ch);
-
     vector<Mat> avg_bgs = {avg_bg1, avg_bg2, avg_bg3, avg_bg4, avg_bg5};
     average_image(avg_bg1, bg1, rows, cols, channels);
     average_image(avg_bg2, bg2, rows, cols, channels);
@@ -79,10 +76,8 @@ int main() {
     average_image(avg_bg4, bg4, rows, cols, channels);
     average_image(avg_bg5, bg5, rows, cols, channels);
 
-
-
     for(int i = 0; i < 5; i++) {
-        string filepath = "Output/bg_omp" + to_string(i+1) + ".jpg";
+        string filepath = "Output/bg_seq" + to_string(i+1) + ".jpg";
         imwrite(filepath, avg_bgs[i]);
     }
 
@@ -106,7 +101,7 @@ int main() {
     foreground_mask(foreground5, fg5, avg_bg5, rows, cols, channels);
 
     for(int i = 0; i < 5; i++) {
-        string filepath = "Output/fg_omp" + to_string(i+1) + ".jpg";
+        string filepath = "Output/fg_seq" + to_string(i+1) + ".jpg";
         imwrite(filepath, fgs[i]);
     }
 
@@ -115,30 +110,21 @@ int main() {
 
 void loadImages(const string& pathPrefix, int start, int end, vector<Mat>& frames) {
 
-    #pragma omp parallel
-    {
-        vector<Mat> threadFrames;
+    for(int i = start; i <= end; i++) {
+        string filename = pathPrefix + to_string(i) + ".jpg";
+        Mat img = imread(filename, IMREAD_UNCHANGED);
+        if(!img.empty()){
+            frames.push_back(img);
+        }
 
-        #pragma omp for nowait
-        for(int i = start; i <= end; i++) {
-            string filename = pathPrefix + to_string(i) + ".jpg";
-            Mat img = imread(filename, IMREAD_UNCHANGED);
-            if(!img.empty()){
-                threadFrames.push_back(img);
-            }
+    } // end of for directive
 
-        } // end of for directive
-        #pragma omp critical
-        frames.insert(frames.end(), threadFrames.begin(), threadFrames.end());
-    }
 
 }
 
 void average_image(Mat & avg_bg, vector<Mat> & bg, int rows, int cols, int channels) {
 
     int n = bg.size();
-
-    #pragma omp parallel for collapse(2)
     for(int y = 0; y < rows; y++) {
         for(int x = 0; x < cols; x++) {
             if ( channels ==  1) {
@@ -201,7 +187,6 @@ void foreground_mask(Mat & foreground, Mat & fg,  Mat & avg_bg, int rows, int co
 
 
 
-    #pragma omp parallel for collapse(2)
     for( int y = 0; y < rows; y++ ) {
         for( int x = 0; x < cols; x++ ) {
             if(channels == 1) {
