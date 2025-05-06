@@ -92,11 +92,11 @@ int main() {
     average_image(avg_bg4, bg4, rows, cols, channels, size);
     average_image(avg_bg5, bg5, rows, cols, channels, size);
 
-    MPI_Reduce(avg_bg1.data, avg_bg1_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(avg_bg2.data, avg_bg2_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(avg_bg3.data, avg_bg3_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(avg_bg4.data, avg_bg4_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(avg_bg5.data, avg_bg5_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Allreduce(avg_bg1.data, avg_bg1_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(avg_bg2.data, avg_bg2_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(avg_bg3.data, avg_bg3_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(avg_bg4.data, avg_bg4_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(avg_bg5.data, avg_bg5_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, MPI_COMM_WORLD);
 
 
     if(rank == 0) {
@@ -126,11 +126,11 @@ int main() {
     Mat foreground4 = imread(FG4, IMREAD_UNCHANGED);
     Mat foreground5 = imread(FG5, IMREAD_UNCHANGED);
 
-    foreground_mask(foreground1, fg1, avg_bg1, rows, cols, channels);
-    foreground_mask(foreground2, fg2, avg_bg2, rows, cols, channels);
-    foreground_mask(foreground3, fg3, avg_bg3, rows, cols, channels);
-    foreground_mask(foreground4, fg4, avg_bg4, rows, cols, channels);
-    foreground_mask(foreground5, fg5, avg_bg5, rows, cols, channels);
+    foreground_mask(foreground1, fg1, avg_bg1_final, rows, cols, channels);
+    foreground_mask(foreground2, fg2, avg_bg2_final, rows, cols, channels);
+    foreground_mask(foreground3, fg3, avg_bg3_final, rows, cols, channels);
+    foreground_mask(foreground4, fg4, avg_bg4_final, rows, cols, channels);
+    foreground_mask(foreground5, fg5, avg_bg5_final, rows, cols, channels);
 
     MPI_Reduce(fg1.data, fg1_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(fg2.data, fg2_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
