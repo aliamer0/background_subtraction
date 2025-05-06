@@ -5,6 +5,7 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <string>
+#include <chrono>
 
 #define BG1 "bg1/frame_"
 #define BG2 "bg2/frame_"
@@ -48,13 +49,17 @@ int main() {
 
     vector<Mat> bg1, bg2, bg3, bg4, bg5;
 
+
+    auto start = chrono::high_resolution_clock::now();
     int length1 = loadImages(BG1, BG1_S, BG1_E, bg1, rank, size);
     int length2 = loadImages(BG2, BG2_S, BG2_E, bg2, rank, size);
     int length3 = loadImages(BG3, BG3_S, BG3_E, bg3, rank, size);
     int length4 = loadImages(BG4, BG4_S, BG4_E, bg4, rank, size);
     int length5 = loadImages(BG5, BG5_S, BG5_E, bg5, rank, size);
+    auto end = chrono::high_resolution_clock::now();
+    chrono::duration<double> duration = end - start;
 
-    cout << "Loaded images successfully. from rank " << rank << endl;
+    cout << "Loaded images successfully. from rank " << rank << " in time "<< duration.count() << " seconds!" << endl;
 
     int rows = bg1[0].rows;
     int cols = bg1[0].cols;
@@ -85,7 +90,7 @@ int main() {
     Mat avg_bg5_final(rows, cols, type, ch);
     vector<Mat> avg_bgs = {avg_bg1_final, avg_bg2_final, avg_bg3_final, avg_bg4_final, avg_bg5_final};
 
-
+    start = chrono::high_resolution_clock::now();
     average_image(avg_bg1, bg1, rows, cols, channels, size);
     average_image(avg_bg2, bg2, rows, cols, channels, size);
     average_image(avg_bg3, bg3, rows, cols, channels, size);
@@ -97,6 +102,12 @@ int main() {
     MPI_Allreduce(avg_bg3.data, avg_bg3_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(avg_bg4.data, avg_bg4_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(avg_bg5.data, avg_bg5_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, MPI_COMM_WORLD);
+    end = chrono::high_resolution_clock::now();
+    duration = end - start;
+
+    cout << "Averaged images successfully. from rank " << rank << " in time "<< duration.count() << " seconds!" << endl;
+
+
 
 
     if(rank == 0) {
@@ -126,6 +137,7 @@ int main() {
     Mat foreground4 = imread(FG4, IMREAD_UNCHANGED);
     Mat foreground5 = imread(FG5, IMREAD_UNCHANGED);
 
+    start = chrono::high_resolution_clock::now();
     foreground_mask(foreground1, fg1, avg_bg1_final, rows, cols, channels);
     foreground_mask(foreground2, fg2, avg_bg2_final, rows, cols, channels);
     foreground_mask(foreground3, fg3, avg_bg3_final, rows, cols, channels);
@@ -137,6 +149,11 @@ int main() {
     MPI_Reduce(fg3.data, fg3_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(fg4.data, fg4_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(fg5.data, fg5_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
+    end = chrono::high_resolution_clock::now();
+    duration = end - start;
+    cout << "Foregrounded images successfully. from rank " << rank << " in time "<< duration.count() << " seconds!" << endl;
+
+
 
 
     if(rank == 0) {

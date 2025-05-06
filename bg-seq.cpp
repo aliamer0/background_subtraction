@@ -4,6 +4,7 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <string>
+#include <chrono>
 
 #define BG1 "bg1/frame_"
 #define BG2 "bg2/frame_"
@@ -41,14 +42,16 @@ int main() {
 
 
     vector<Mat> bg1, bg2, bg3, bg4, bg5;
-
+    auto start = chrono::high_resolution_clock::now();
     loadImages(BG1, BG1_S, BG1_E, bg1);
     loadImages(BG2, BG2_S, BG2_E, bg2);
     loadImages(BG3, BG3_S, BG3_E, bg3);
     loadImages(BG4, BG4_S, BG4_E, bg4);
     loadImages(BG5, BG5_S, BG5_E, bg5);
+    auto end = chrono::high_resolution_clock::now();
+    chrono::duration<double> duration = end - start;
 
-    cout << "Loaded images successfully." << endl;
+    cout << "Loaded images successfully. in time " << duration.count() << " seconds!" << endl;
 
     int rows = bg1[0].rows;
     int cols = bg1[0].cols;
@@ -70,11 +73,18 @@ int main() {
     Mat avg_bg4(rows, cols, type, ch);
     Mat avg_bg5(rows, cols, type, ch);
     vector<Mat> avg_bgs = {avg_bg1, avg_bg2, avg_bg3, avg_bg4, avg_bg5};
+
+    start = chrono::high_resolution_clock::now();
     average_image(avg_bg1, bg1, rows, cols, channels);
     average_image(avg_bg2, bg2, rows, cols, channels);
     average_image(avg_bg3, bg3, rows, cols, channels);
     average_image(avg_bg4, bg4, rows, cols, channels);
     average_image(avg_bg5, bg5, rows, cols, channels);
+    end = chrono::high_resolution_clock::now();
+    duration = end - start;
+
+    cout << "Averaged BGs images successfully. in time " << duration.count() << " seconds!" << endl;
+
 
     for(int i = 0; i < 5; i++) {
         string filepath = "Output/bg_seq" + to_string(i+1) + ".jpg";
@@ -94,11 +104,18 @@ int main() {
     Mat foreground4 = imread(FG4, IMREAD_UNCHANGED);
     Mat foreground5 = imread(FG5, IMREAD_UNCHANGED);
 
+    start = chrono::high_resolution_clock::now();
     foreground_mask(foreground1, fg1, avg_bg1, rows, cols, channels);
     foreground_mask(foreground2, fg2, avg_bg2, rows, cols, channels);
     foreground_mask(foreground3, fg3, avg_bg3, rows, cols, channels);
     foreground_mask(foreground4, fg4, avg_bg4, rows, cols, channels);
     foreground_mask(foreground5, fg5, avg_bg5, rows, cols, channels);
+    end = chrono::high_resolution_clock::now();
+    duration = end - start;
+    cout << "Foregrounded images successfully. in time " << duration.count() << " seconds!" << endl;
+
+
+
 
     for(int i = 0; i < 5; i++) {
         string filepath = "Output/fg_seq" + to_string(i+1) + ".jpg";
