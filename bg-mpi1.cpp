@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
     }
     MPI_Bcast(&numFrames, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-    // Allocate and broadcast frame paths
+	// copy into vector of char arrays to enable scattering
     const int pathLength = 256;
     vector<array<char, pathLength>> allPaths;
 
@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
     int cols = sample.cols;
 
 
-    // Compute local background (row-wise average)
+    
 // Compute local background (frame-wise average)
     Mat localSum = Mat::zeros(rows, cols, CV_32FC1);  // Full image size
     for (int i = 0; i < localNumFrames; ++i) {
@@ -181,7 +181,7 @@ int main(int argc, char** argv) {
 
     //int startFrame = rank * baseFrames + min(rank, extra);
     //int endFrame = startFrame + baseFrames + (rank < extra ? 1 : 0);
-
+	
 
     //for (int i = startFrame; i < endFrame; ++i) {
     //    Mat frame = imread(allPaths[i].data(), IMREAD_GRAYSCALE);
