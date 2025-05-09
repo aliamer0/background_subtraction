@@ -7,7 +7,7 @@ namespace fs = std::filesystem;
 
 int main() {
 
-    cv::VideoCapture cap("Input_video/bg.mp4");
+    cv::VideoCapture cap("Input_video/input2.mp4");
     if (!cap.isOpened()) {
         std::cerr << "Error: Could not open video file." << std::endl;
         return -1;

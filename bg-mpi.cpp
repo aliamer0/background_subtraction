@@ -12,6 +12,8 @@
 #define BG3 "bg3/frame_"
 #define BG4 "bg4/frame_"
 #define BG5 "bg5/frame_"
+#define BG6 "bg6/frame_"
+#define BG7 "bg7/frame_"
 #define BG1_S 0
 #define BG1_E 77
 #define BG2_S 78
@@ -20,13 +22,19 @@
 #define BG3_E 188
 #define BG4_S 189
 #define BG4_E 246
-#define BG5_S 247
-#define BG5_E 606
+#define BG5_S 380
+#define BG5_E 530
+#define BG6_S 0
+#define BG6_E 150
+#define BG7_S 0
+#define BG7_E 150
 #define FG1 "bg1/foreground.png"
 #define FG2 "bg2/foreground.png"
 #define FG3 "bg3/foreground.png"
 #define FG4 "bg4/foreground.png"
 #define FG5 "bg5/foreground.png"
+#define FG6 "bg6/foreground.png"
+#define FG7 "bg7/foreground.png"
 #define THR 40
 
 using namespace std;
@@ -51,7 +59,7 @@ int main() {
 
 
     auto start = chrono::high_resolution_clock::now();
-    int length1 = loadImages(BG1, BG1_S, BG1_E, bg1, rank, size);
+    int length1 = loadImages(BG7, BG7_S, BG7_E, bg1, rank, size);
 
     auto end = chrono::high_resolution_clock::now();
     chrono::duration<double> duration = end - start;
@@ -109,14 +117,10 @@ int main() {
 
     vector<Mat> fgs = {fg1_final};
 
-    Mat foreground1 = imread(FG1, IMREAD_UNCHANGED);
-    Mat foreground2 = imread(FG2, IMREAD_UNCHANGED);
-    Mat foreground3 = imread(FG3, IMREAD_UNCHANGED);
-    Mat foreground4 = imread(FG4, IMREAD_UNCHANGED);
-    Mat foreground5 = imread(FG5, IMREAD_UNCHANGED);
+    Mat foreground7 = imread(FG7, IMREAD_GRAYSCALE);
 
     start = chrono::high_resolution_clock::now();
-    foreground_mask(foreground1, fg1, avg_bg1_final, rows, cols, channels);
+    foreground_mask(foreground7, fg1, avg_bg1_final, rows, cols, channels);
 
 
     MPI_Reduce(fg1.data, fg1_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
@@ -154,7 +158,7 @@ int loadImages(const string& pathPrefix, int start, int end, vector<Mat>& frames
 
     for(int i = startIdx; i <= endIdx; i++) {
         string filename = pathPrefix + to_string(i) + ".png";
-        Mat img = imread(filename, IMREAD_UNCHANGED);
+        Mat img = imread(filename, IMREAD_GRAYSCALE);
         if(!img.empty()){
             frames.push_back(img);
         }
