@@ -154,46 +154,6 @@ void average_image(Mat & avg_bg, vector<Mat> & bg, int rows, int cols, int chann
                 float avgGray = static_cast<float>(sumGray) / n;
                 avg_bg.at<uchar>(y, x) = static_cast<uchar>(round(avgGray));
 
-            } else if (channels == 3) {
-                int sumR = 0, sumB = 0, sumG = 0;
-
-                for (int k = 0; k < bg.size(); k++) {
-                    Vec3b pixel = bg[k].at<Vec3b>(y, x);
-                    sumB += pixel[0];
-                    sumG += pixel[1];
-                    sumR += pixel[2];
-                }
-
-               float avgB = static_cast<float>(sumB) / n;
-               float avgG = static_cast<float>(sumG) / n;
-               float avgR = static_cast<float>(sumR) / n;
-
-               avg_bg.at<Vec3b>(y, x)[0] = static_cast<uchar>(round(avgB));  // Round to nearest integer
-               avg_bg.at<Vec3b>(y, x)[1] = static_cast<uchar>(round(avgG));
-               avg_bg.at<Vec3b>(y, x)[2] = static_cast<uchar>(round(avgR));
-
-            } else if (channels == 4) {
-                 int sumR = 0, sumB = 0, sumG = 0, sumA = 0;
-
-                for (int k = 0; k < bg.size(); k++) {
-                    Vec4b pixel = bg[k].at<Vec4b>(y, x);
-                    sumB += pixel[0];
-                    sumG += pixel[1];
-                    sumR += pixel[2];
-                    sumA += pixel[3];
-                }
-
-
-                float avgB = static_cast<float>(sumB) / n;
-                float avgG = static_cast<float>(sumG) / n;
-                float avgR = static_cast<float>(sumR) / n;
-                float avgA = static_cast<float>(sumA) / n;
-
-                avg_bg.at<Vec4b>(y, x)[0] = static_cast<uchar>(round(avgB));
-                avg_bg.at<Vec4b>(y, x)[1] = static_cast<uchar>(round(avgG));
-                avg_bg.at<Vec4b>(y, x)[2] = static_cast<uchar>(round(avgR));
-                avg_bg.at<Vec4b>(y, x)[3] = static_cast<uchar>(round(avgA));
-
             }
         }
     }
@@ -212,28 +172,7 @@ void foreground_mask(Mat & foreground, Mat & fg,  Mat & avg_bg, int rows, int co
                 if (diff > THR) {
                     fg.at<uchar>(y, x) = 250;
                 }
-            } else if (channels == 3) {
-
-                int diff1 = abs(foreground.at<Vec3b>(y, x)[0] - avg_bg.at<Vec3b>(y,x)[0]);
-                int diff2 =  abs(foreground.at<Vec3b>(y, x)[1] - avg_bg.at<Vec3b>(y,x)[1]);
-                int diff3 =  abs(foreground.at<Vec3b>(y, x)[2] - avg_bg.at<Vec3b>(y,x)[2]);
-                int diff = diff1 + diff2 + diff3;
-                if (diff > (THR * 3)) {
-                    fg.at<uchar>(y,x) = 250;
-                }
-            } else if (channels == 4) {
-                int diff1 = abs(foreground.at<Vec4b>(y, x)[0] - avg_bg.at<Vec4b>(y,x)[0]);
-                int diff2 =  abs(foreground.at<Vec4b>(y, x)[1] - avg_bg.at<Vec4b>(y,x)[1]);
-                int diff3 =  abs(foreground.at<Vec4b>(y, x)[2] - avg_bg.at<Vec4b>(y,x)[2]);
-                int diff4 =  abs(foreground.at<Vec4b>(y, x)[3] - avg_bg.at<Vec4b>(y,x)[3]);
-
-                int diff = diff1 + diff2 + diff3;
-                if ( diff > (THR * 4) ) {
-                    fg.at<uchar>(y, x) = 250;
-                }
+            }
             }
         }
-    }
-
-
 }

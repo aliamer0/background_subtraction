@@ -159,7 +159,7 @@ int main(int argc, char** argv) {
 
     //int startFrame = rank * baseFrames + min(rank, extra);
     //int endFrame = startFrame + baseFrames + (rank < extra ? 1 : 0);
-	
+
 
     //for (int i = startFrame; i < endFrame; ++i) {
     //    Mat frame = imread(allPaths[i].data(), IMREAD_GRAYSCALE);
