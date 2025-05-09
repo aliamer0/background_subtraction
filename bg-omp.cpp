@@ -27,7 +27,7 @@
 #define FG3 "bg3/foreground.jpg"
 #define FG4 "bg4/foreground.jpg"
 #define FG5 "bg5/foreground.jpg"
-#define THR 90
+#define THR 40
 
 using namespace std;
 using namespace cv;
@@ -69,56 +69,40 @@ int main() {
     }
 
     Mat avg_bg1(rows, cols, type, ch);
-    Mat avg_bg2(rows, cols, type, ch);
-    Mat avg_bg3(rows, cols, type, ch);
-    Mat avg_bg4(rows, cols, type, ch);
-    Mat avg_bg5(rows, cols, type, ch);
-    Mat avg_bg(rows, cols, type, ch);
 
-    vector<Mat> avg_bgs = {avg_bg1, avg_bg2, avg_bg3, avg_bg4, avg_bg5};
+
+    vector<Mat> avg_bgs = {avg_bg1};
 
     start = chrono::high_resolution_clock::now();
     average_image(avg_bg1, bg1, rows, cols, channels);
-    average_image(avg_bg2, bg2, rows, cols, channels);
-    average_image(avg_bg3, bg3, rows, cols, channels);
-    average_image(avg_bg4, bg4, rows, cols, channels);
-    average_image(avg_bg5, bg5, rows, cols, channels);
+
     end = chrono::high_resolution_clock::now();
     duration = end - start;
     cout << "Averaged images successfully. in time " << duration.count() << " seconds!" << endl;
 
 
-    for(int i = 0; i < 5; i++) {
-        string filepath = "Output/bg_omp" + to_string(i+1) + ".jpg";
+    for(int i = 0; i < 1; i++) {
+        string filepath = "Output/bg_omp" + to_string(i+1) + ".png";
         imwrite(filepath, avg_bgs[i]);
     }
 
     Mat fg1(rows, cols, CV_8UC1, Scalar(0));
-    Mat fg2(rows, cols, CV_8UC1, Scalar(0));
-    Mat fg3(rows, cols, CV_8UC1, Scalar(0));
-    Mat fg4(rows, cols, CV_8UC1, Scalar(0));
-    Mat fg5(rows, cols, CV_8UC1, Scalar(0));
-    vector<Mat> fgs = {fg1, fg2, fg3, fg4, fg5};
+
+    vector<Mat> fgs = {fg1};
 
     Mat foreground1 = imread(FG1, IMREAD_UNCHANGED);
-    Mat foreground2 = imread(FG2, IMREAD_UNCHANGED);
-    Mat foreground3 = imread(FG3, IMREAD_UNCHANGED);
-    Mat foreground4 = imread(FG4, IMREAD_UNCHANGED);
-    Mat foreground5 = imread(FG5, IMREAD_UNCHANGED);
+
 
     start = chrono::high_resolution_clock::now();
     foreground_mask(foreground1, fg1, avg_bg1, rows, cols, channels);
-    foreground_mask(foreground2, fg2, avg_bg2, rows, cols, channels);
-    foreground_mask(foreground3, fg3, avg_bg3, rows, cols, channels);
-    foreground_mask(foreground4, fg4, avg_bg4, rows, cols, channels);
-    foreground_mask(foreground5, fg5, avg_bg5, rows, cols, channels);
+
     end = chrono::high_resolution_clock::now();
     duration = end - start;
     cout << "Foregrounded images successfully. in time " << duration.count() << " seconds!" << endl;
 
 
-    for(int i = 0; i < 5; i++) {
-        string filepath = "Output/fg_omp" + to_string(i+1) + ".jpg";
+    for(int i = 0; i < 1; i++) {
+        string filepath = "Output/fg_omp" + to_string(i+1) + ".png";
         imwrite(filepath, fgs[i]);
     }
 
@@ -133,7 +117,7 @@ void loadImages(const string& pathPrefix, int start, int end, vector<Mat>& frame
 
         #pragma omp for nowait
         for(int i = start; i <= end; i++) {
-            string filename = pathPrefix + to_string(i) + ".jpg";
+            string filename = pathPrefix + to_string(i) + ".png";
             Mat img = imread(filename, IMREAD_UNCHANGED);
             if(!img.empty()){
                 threadFrames.push_back(img);

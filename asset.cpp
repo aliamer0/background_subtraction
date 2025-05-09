@@ -28,7 +28,7 @@ int main() {
             break;
 
         std::ostringstream filename;
-        filename << outputFolder << "/frame_"  << frameCount << ".jpg";
+        filename << outputFolder << "/frame_"  << frameCount << ".png";
 
 
         cv::imwrite(filename.str(), frame);

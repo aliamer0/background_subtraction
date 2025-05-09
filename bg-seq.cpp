@@ -26,7 +26,7 @@
 #define FG3 "bg3/foreground.jpg"
 #define FG4 "bg4/foreground.jpg"
 #define FG5 "bg5/foreground.jpg"
-#define THR 90
+#define THR 40
 
 using namespace std;
 using namespace cv;
