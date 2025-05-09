@@ -27,7 +27,7 @@
 #define FG3 "bg3/foreground.jpg"
 #define FG4 "bg4/foreground.jpg"
 #define FG5 "bg5/foreground.jpg"
-#define THR 90
+#define THR 40
 
 using namespace std;
 using namespace cv;
@@ -52,10 +52,7 @@ int main() {
 
     auto start = chrono::high_resolution_clock::now();
     int length1 = loadImages(BG1, BG1_S, BG1_E, bg1, rank, size);
-    int length2 = loadImages(BG2, BG2_S, BG2_E, bg2, rank, size);
-    int length3 = loadImages(BG3, BG3_S, BG3_E, bg3, rank, size);
-    int length4 = loadImages(BG4, BG4_S, BG4_E, bg4, rank, size);
-    int length5 = loadImages(BG5, BG5_S, BG5_E, bg5, rank, size);
+
     auto end = chrono::high_resolution_clock::now();
     chrono::duration<double> duration = end - start;
 
@@ -76,32 +73,19 @@ int main() {
     }
 
     Mat avg_bg1(rows, cols, type, ch);
-    Mat avg_bg2(rows, cols, type, ch);
-    Mat avg_bg3(rows, cols, type, ch);
-    Mat avg_bg4(rows, cols, type, ch);
-    Mat avg_bg5(rows, cols, type, ch);
+
 
 
 
     Mat avg_bg1_final(rows, cols, type, ch);
-    Mat avg_bg2_final(rows, cols, type, ch);
-    Mat avg_bg3_final(rows, cols, type, ch);
-    Mat avg_bg4_final(rows, cols, type, ch);
-    Mat avg_bg5_final(rows, cols, type, ch);
-    vector<Mat> avg_bgs = {avg_bg1_final, avg_bg2_final, avg_bg3_final, avg_bg4_final, avg_bg5_final};
+;
+    vector<Mat> avg_bgs = {avg_bg1_final};
 
     start = chrono::high_resolution_clock::now();
     average_image(avg_bg1, bg1, rows, cols, channels, size);
-    average_image(avg_bg2, bg2, rows, cols, channels, size);
-    average_image(avg_bg3, bg3, rows, cols, channels, size);
-    average_image(avg_bg4, bg4, rows, cols, channels, size);
-    average_image(avg_bg5, bg5, rows, cols, channels, size);
 
     MPI_Allreduce(avg_bg1.data, avg_bg1_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(avg_bg2.data, avg_bg2_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(avg_bg3.data, avg_bg3_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(avg_bg4.data, avg_bg4_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(avg_bg5.data, avg_bg5_final.data, rows * cols * channels, MPI_UNSIGNED_CHAR, MPI_SUM, MPI_COMM_WORLD);
+
     end = chrono::high_resolution_clock::now();
     duration = end - start;
 
@@ -111,25 +95,19 @@ int main() {
 
 
     if(rank == 0) {
-        for(int i = 0; i < 5; i++) {
-            string filepath = "Output/bg_mpi" + to_string(i+1) + ".jpg";
+        for(int i = 0; i < 1; i++) {
+            string filepath = "Output/bg_mpi" + to_string(i+1) + ".png";
             imwrite(filepath, avg_bgs[i]);
         }
     }
 
     Mat fg1(rows, cols, CV_8UC1, Scalar(0));
-    Mat fg2(rows, cols, CV_8UC1, Scalar(0));
-    Mat fg3(rows, cols, CV_8UC1, Scalar(0));
-    Mat fg4(rows, cols, CV_8UC1, Scalar(0));
-    Mat fg5(rows, cols, CV_8UC1, Scalar(0));
+
 
     Mat fg1_final(rows, cols, CV_8UC1, Scalar(0));
-    Mat fg2_final(rows, cols, CV_8UC1, Scalar(0));
-    Mat fg3_final(rows, cols, CV_8UC1, Scalar(0));
-    Mat fg4_final(rows, cols, CV_8UC1, Scalar(0));
-    Mat fg5_final(rows, cols, CV_8UC1, Scalar(0));
 
-    vector<Mat> fgs = {fg1_final, fg2_final, fg3_final, fg4_final, fg5_final};
+
+    vector<Mat> fgs = {fg1_final};
 
     Mat foreground1 = imread(FG1, IMREAD_UNCHANGED);
     Mat foreground2 = imread(FG2, IMREAD_UNCHANGED);
@@ -139,16 +117,10 @@ int main() {
 
     start = chrono::high_resolution_clock::now();
     foreground_mask(foreground1, fg1, avg_bg1_final, rows, cols, channels);
-    foreground_mask(foreground2, fg2, avg_bg2_final, rows, cols, channels);
-    foreground_mask(foreground3, fg3, avg_bg3_final, rows, cols, channels);
-    foreground_mask(foreground4, fg4, avg_bg4_final, rows, cols, channels);
-    foreground_mask(foreground5, fg5, avg_bg5_final, rows, cols, channels);
+
 
     MPI_Reduce(fg1.data, fg1_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(fg2.data, fg2_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(fg3.data, fg3_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(fg4.data, fg4_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
-    MPI_Reduce(fg5.data, fg5_final.data, cols * rows, MPI_UNSIGNED_CHAR, MPI_MAX, 0, MPI_COMM_WORLD);
+
     end = chrono::high_resolution_clock::now();
     duration = end - start;
     cout << "Foregrounded images successfully. from rank " << rank << " in time "<< duration.count() << " seconds!" << endl;
@@ -157,8 +129,8 @@ int main() {
 
 
     if(rank == 0) {
-        for(int i = 0; i < 5; i++) {
-            string filepath = "Output/fg_mpi" + to_string(i+1) + ".jpg";
+        for(int i = 0; i < 1; i++) {
+            string filepath = "Output/fg_mpi" + to_string(i+1) + ".png";
             imwrite(filepath, fgs[i]);
         }
     }
@@ -181,7 +153,7 @@ int loadImages(const string& pathPrefix, int start, int end, vector<Mat>& frames
     double weight = static_cast<double>(endIdx - startIdx) / static_cast<double>(size);
 
     for(int i = startIdx; i <= endIdx; i++) {
-        string filename = pathPrefix + to_string(i) + ".jpg";
+        string filename = pathPrefix + to_string(i) + ".png";
         Mat img = imread(filename, IMREAD_UNCHANGED);
         if(!img.empty()){
             frames.push_back(img);
