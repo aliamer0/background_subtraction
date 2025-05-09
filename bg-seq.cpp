@@ -21,11 +21,11 @@
 #define BG4_E 246
 #define BG5_S 247
 #define BG5_E 606
-#define FG1 "bg1/foreground.jpg"
-#define FG2 "bg2/foreground.jpg"
-#define FG3 "bg3/foreground.jpg"
-#define FG4 "bg4/foreground.jpg"
-#define FG5 "bg5/foreground.jpg"
+#define FG1 "bg1/foreground.png"
+#define FG2 "bg2/foreground.png"
+#define FG3 "bg3/foreground.png"
+#define FG4 "bg4/foreground.png"
+#define FG5 "bg5/foreground.png"
 #define THR 40
 
 using namespace std;
