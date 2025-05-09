@@ -72,51 +72,72 @@ int main(int argc, char** argv) {
 
     // Allocate and broadcast frame paths
     const int pathLength = 256;
-    vector<array<char, pathLength>> allPaths(numFrames);
+    vector<array<char, pathLength>> allPaths;
+
     if (rank == 0) {
-        for (int i = 0; i < numFrames; i++) {
+        allPaths.resize(numFrames);
+        for (int i = 0; i < numFrames; ++i) {
             strncpy(allPaths[i].data(), framePaths[i].c_str(), pathLength - 1);
-            allPaths[i][pathLength - 1] = '\0';
+            allPaths[i][pathLength - 1] = '\0'; // ensure null-termination
         }
     }
-    MPI_Bcast(allPaths.data(), numFrames * pathLength, MPI_CHAR, 0, MPI_COMM_WORLD);
+
+    // Compute frames per rank
+    vector<int> sendCounts(size), displs(size);
+    int offset = 0;
+    for (int i = 0; i < size; ++i) {
+        int count = numFrames / size + (i < (numFrames % size) ? 1 : 0);
+        sendCounts[i] = count * pathLength;
+        displs[i] = offset;
+        offset += sendCounts[i];
+    }
+
+    // Local buffer to receive scattered paths
+    int localNumFrames = sendCounts[rank] / pathLength;
+    vector<array<char, pathLength>> localFramePaths(localNumFrames);
+
+    MPI_Scatterv(rank == 0 ? allPaths[0].data() : nullptr, sendCounts.data(), displs.data(), MPI_CHAR,
+        localFramePaths[0].data(), localNumFrames * pathLength, MPI_CHAR,
+        0, MPI_COMM_WORLD);
+
 
     // Load sample image to determine dimensions
-    Mat sample = imread(allPaths[0].data(), IMREAD_GRAYSCALE);
+    Mat sample = imread(localFramePaths[0].data(), IMREAD_GRAYSCALE);
     if (sample.empty()) {
-        if (rank == 0) cerr << "Failed to read first frame." << endl;
+        cerr << "Rank " << rank << ": Failed to read sample image." << endl;
         MPI_Finalize();
         return 1;
     }
-
     int rows = sample.rows;
     int cols = sample.cols;
-    int localStart = (rows * rank) / size;
-    int localEnd = (rows * (rank + 1)) / size;
-    int localRows = localEnd - localStart;
+
 
     // Compute local background (row-wise average)
-    Mat localSum = Mat::zeros(localRows, cols, CV_32FC1);
-    for (int i = 0; i < numFrames; i++) {
-        Mat img = imread(allPaths[i].data(), IMREAD_GRAYSCALE);
-        if (img.empty()) continue;
-        Mat roi = img(Range(localStart, localEnd), Range::all());
-        roi.convertTo(roi, CV_32FC1);
-        localSum += roi;
+// Compute local background (frame-wise average)
+    Mat localSum = Mat::zeros(rows, cols, CV_32FC1);  // Full image size
+    for (int i = 0; i < localNumFrames; ++i) {
+        Mat img = imread(localFramePaths[i].data(), IMREAD_GRAYSCALE);
+        if (img.empty()) {
+            cerr << "Rank " << rank << ": Failed to read frame " << localFramePaths[i].data() << endl;
+            continue;
+        }
+        Mat img32;
+        img.convertTo(img32, CV_32FC1);
+        localSum += img32;
     }
-    Mat localMean;
-    localSum /= numFrames;
-    localSum.convertTo(localMean, CV_8UC1);
 
-    // Gather full background from all processes
+    // Global sum will be divided by total number of frames after reduction
+    Mat globalSum = Mat::zeros(rows, cols, CV_32FC1);
+
+    MPI_Reduce(localSum.data, globalSum.data, rows * cols, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+
     Mat fullBackground;
-    if (rank == 0) fullBackground = Mat::zeros(rows, cols, CV_8UC1);
+    if (rank == 0) {
+        globalSum /= numFrames;  // Final average
+        globalSum.convertTo(fullBackground, CV_8UC1);
+    }
 
-    MPI_Gather(localMean.data, localRows * cols, MPI_UNSIGNED_CHAR,
-        fullBackground.data, localRows * cols, MPI_UNSIGNED_CHAR,
-        0, MPI_COMM_WORLD);
-
-    // Broadcast full background to all ranks
+    // Broadcast background to all
     if (rank != 0) {
         fullBackground = Mat::zeros(rows, cols, CV_8UC1);
     }
@@ -124,29 +145,30 @@ int main(int argc, char** argv) {
 
 
 
-    if (rank == 0) {
 
+    // All ranks load the same frame
+    if (rank == 0) {
         Mat frame = imread(TARGET_FRAME, IMREAD_GRAYSCALE);
         if (frame.empty()) {
-            cerr << "Failed to read target frame." << endl;
+            cerr << "Rank 0: Failed to read target frame." << endl;
+            MPI_Finalize();
+            return 1;
         }
-        else {
-            Mat mask = Mat::zeros(frame.size(), CV_8UC1);
-            for (int r = 0; r < frame.rows; ++r) {
-                for (int c = 0; c < frame.cols; ++c) {
-                    uchar pixel1 = frame.at<uchar>(r, c);
-                    uchar pixel2 = fullBackground.at<uchar>(r, c);
-                    uchar absDiff = static_cast<uchar>(abs(pixel1 - pixel2));
-                    mask.at<uchar>(r, c) = (absDiff > 60) ? 255 : 0;
-                }
-            }
-            string outputName = outputFolder + "foreground_mask_.png";
-            imwrite(outputName, mask);
-            cout << "Saved foreground mask for frame " << endl;
-            imwrite(outputFolder + "background.png", fullBackground);
-            cout << "Background image saved as " << outputFolder + "background.png" << endl;
 
+        Mat mask = Mat::zeros(frame.size(), CV_8UC1);
+
+        for (int r = 0; r < frame.rows; ++r) {
+            for (int c = 0; c < frame.cols; ++c) {
+                uchar pixel1 = frame.at<uchar>(r, c);
+                uchar pixel2 = fullBackground.at<uchar>(r, c);
+                uchar absDiff = static_cast<uchar>(abs(pixel1 - pixel2));
+                mask.at<uchar>(r, c) = (absDiff > 60) ? 255 : 0;
+            }
         }
+
+        imwrite(outputFolder + "foreground_mask_parallel.png", mask);
+        imwrite(outputFolder + "background.png", fullBackground);
+        cout << "Foreground and background images saved in " << outputFolder << endl;
     }
 
 
