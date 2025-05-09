@@ -56,8 +56,8 @@ int main() {
     loadImages(BG7, BG7_S, BG7_E, bg1);
 
     auto end = chrono::high_resolution_clock::now();
-    chrono::duration<double> duration = end - start;
-    cout << "Loaded images successfully. in time " << duration.count() << " seconds!" << endl;
+    chrono::duration<double> duration1 = end - start;
+    cout << "Loaded images successfully. in time " << duration1.count() << " seconds!" << endl;
 
     int rows = bg1[0].rows;
     int cols = bg1[0].cols;
@@ -82,8 +82,8 @@ int main() {
     average_image(avg_bg1, bg1, rows, cols, channels);
 
     end = chrono::high_resolution_clock::now();
-    duration = end - start;
-    cout << "Averaged images successfully. in time " << duration.count() << " seconds!" << endl;
+    chrono::duration<double> duration2 = end - start;
+    cout << "Averaged images successfully. in time " << duration2.count() << " seconds!" << endl;
 
 
     for(int i = 0; i < 1; i++) {
@@ -103,9 +103,11 @@ int main() {
     foreground_mask(foreground7, fg1, avg_bg1, rows, cols, channels);
 
     end = chrono::high_resolution_clock::now();
-    duration = end - start;
-    cout << "Foregrounded images successfully. in time " << duration.count() << " seconds!" << endl;
+    chrono::duration<double> duration3 = end - start;
+    cout << "Foregrounded images successfully. in time " << duration3.count() << " seconds!" << endl;
 
+    chrono::duration<double> duration = duration1 + duration2 + duration3;
+    cout << "Total execution time OpenMP: " << duration.count() << " Seconds!" << endl;
 
     for(int i = 0; i < 1; i++) {
         string filepath = "Output/fg_omp" + to_string(i+1) + ".png";
