@@ -34,7 +34,7 @@
 #define FG5 "bg5/foreground.png"
 #define FG6 "bg6/foreground.png"
 #define FG7 "bg7/foreground.png"
-#define THR 40
+#define THR 70
 
 using namespace std;
 using namespace cv;
@@ -51,7 +51,7 @@ int main() {
 
     vector<Mat> bg1, bg2, bg3, bg4, bg5;
     auto start = chrono::high_resolution_clock::now();
-    loadImages(BG7, BG7_S, BG7_E, bg1);
+    loadImages(BG6, BG6_S, BG6_E, bg1);
     auto end = chrono::high_resolution_clock::now();
     chrono::duration<double> duration1 = end - start;
 
@@ -92,11 +92,11 @@ int main() {
     Mat fg1(rows, cols, CV_8UC1, Scalar(0));
     vector<Mat> fgs = {fg1};
 
-    Mat foreground7 = imread(FG7, IMREAD_GRAYSCALE);
+    Mat foreground6 = imread(FG6, IMREAD_GRAYSCALE);
 
 
     start = chrono::high_resolution_clock::now();
-    foreground_mask(foreground7, fg1, avg_bg1, rows, cols, channels);
+    foreground_mask(foreground6, fg1, avg_bg1, rows, cols, channels);
 
     end = chrono::high_resolution_clock::now();
     chrono::duration<double> duration3 = end - start;
